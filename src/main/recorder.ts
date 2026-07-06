@@ -1,6 +1,13 @@
-import { uIOhook, UiohookMouseEvent } from 'uiohook-napi'
+import { uIOhook, UiohookKey, UiohookMouseEvent, UiohookKeyboardEvent } from 'uiohook-napi'
 import { BrowserWindow } from 'electron'
 import type { RawClickEvent, ClickButton } from '../shared/types'
+
+// 기록할 주요 키 (활성 요소를 확정/취소하는 키)
+const KEY_LABELS: Record<number, string> = {
+  [UiohookKey.Enter]: 'Enter',
+  [UiohookKey.Space]: 'Space',
+  [UiohookKey.Escape]: 'Esc'
+}
 
 // uiohook(libuiohook) 버튼 코드: 1=left, 2=right, 3=middle
 function mapButton(button: unknown): ClickButton | null {
@@ -28,6 +35,8 @@ let onClickCount: ((count: number) => void) | null = null
 /** 눌린 상태 추적 (드래그 판정용) */
 let pending: { x: number; y: number; time: number; button: ClickButton; clicks: number } | null =
   null
+/** 마지막 커서 위치 (키 입력 스텝의 마커 위치로 사용) */
+let lastMouse = { x: 0, y: 0 }
 
 /** 앱 자체 창(메인/리모컨) 안에서의 클릭은 스텝에서 제외 */
 function isInsideOwnWindow(x: number, y: number): boolean {
@@ -38,12 +47,35 @@ function isInsideOwnWindow(x: number, y: number): boolean {
   })
 }
 
+function handleMouseMove(e: UiohookMouseEvent): void {
+  lastMouse = { x: e.x, y: e.y }
+}
+
 function handleMouseDown(e: UiohookMouseEvent): void {
   if (!capturing) return
+  lastMouse = { x: e.x, y: e.y }
   const button = mapButton(e.button)
   if (!button) return
   if (isInsideOwnWindow(e.x, e.y)) return
   pending = { x: e.x, y: e.y, time: Date.now(), button, clicks: e.clicks || 1 }
+}
+
+function handleKeyDown(e: UiohookKeyboardEvent): void {
+  if (!capturing) return
+  const label = KEY_LABELS[e.keycode]
+  if (!label) return
+  // 같은 창(리모컨/메인) 위에서의 키는 굳이 기록하지 않음
+  if (isInsideOwnWindow(lastMouse.x, lastMouse.y)) return
+  events.push({
+    time: Date.now(),
+    kind: 'key',
+    x: lastMouse.x,
+    y: lastMouse.y,
+    button: 'left',
+    clicks: 1,
+    key: label
+  })
+  onClickCount?.(events.length)
 }
 
 function handleMouseUp(e: UiohookMouseEvent): void {
@@ -92,8 +124,10 @@ export function startCapture(exclude: BrowserWindow[], onCount: (count: number) 
   onClickCount = onCount
   capturing = true
   if (!hookStarted) {
+    uIOhook.on('mousemove', handleMouseMove)
     uIOhook.on('mousedown', handleMouseDown)
     uIOhook.on('mouseup', handleMouseUp)
+    uIOhook.on('keydown', handleKeyDown)
     uIOhook.start()
     hookStarted = true
   }

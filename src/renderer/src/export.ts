@@ -14,6 +14,7 @@ import {
 } from './markerGeometry'
 
 export function stepLabel(step: Step): string {
+  if (step.keyLabel) return `${step.keyLabel} 키`
   if (step.clicks > 1) return '더블클릭'
   if (step.button === 'right') return '우클릭'
   if (step.button === 'middle') return '휠클릭'

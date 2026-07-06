@@ -14,7 +14,7 @@ import type {
 } from '../../../shared/types'
 import { defaultStrokeWidth, genId, normalizeProject } from '../../../shared/normalize'
 import { frameUrl } from '../media'
-import { renderAllSteps, stepLabel } from '../export'
+import { renderAllSteps, renderStepToPng, stepLabel } from '../export'
 import {
   CAPTION_FONTS,
   RESIZE_HANDLES,
@@ -218,42 +218,40 @@ export default function Editor({ initialProject, onGoHome }: Props): JSX.Element
     [selectedId]
   )
 
-  /** 기본 내보내기 — 프로젝트 폴더 하위 exports 에 모든 스텝 저장 */
-  const exportAll = useCallback(async () => {
-    setExporting(true)
-    try {
-      const images = await renderAllSteps(project)
-      const dir = project.dir + '/exports'
-      const written = await window.api.exportToFolder(dir, images)
-      if (written && written.length > 0) {
-        showToast(`✅ ${written.length}장 저장 완료 → exports 폴더`)
-      }
-    } catch (err) {
-      showToast('내보내기 실패: ' + String(err))
-    } finally {
-      setExporting(false)
-    }
-  }, [project, showToast])
-
-  /** 다른 이름으로 저장 — 폴더 선택 */
-  const exportSaveAs = useCallback(async () => {
-    setExporting(true)
-    try {
-      const images = await renderAllSteps(project)
-      const written = await window.api.exportSaveAs(images)
-      if (written && written.length > 0) {
-        const folder = written[0].slice(0, written[0].lastIndexOf('/'))
-        showToast(`✅ ${written.length}장 저장 완료 → ${folder}`)
-      }
-    } catch (err) {
-      showToast('내보내기 실패: ' + String(err))
-    } finally {
-      setExporting(false)
-    }
-  }, [project, showToast])
-
   const selected = project.steps.find((s) => s.id === selectedId) ?? null
   const selectedIndex = selected ? project.steps.indexOf(selected) : -1
+  const exportDir = project.dir + '/exports'
+
+  /** 이 스텝 한 장만 저장 */
+  const saveOne = useCallback(async () => {
+    if (!selected) return
+    setExporting(true)
+    try {
+      const idx = project.steps.indexOf(selected)
+      const dataUrl = await renderStepToPng(project, selected, idx + 1)
+      const fileName = `step-${String(idx + 1).padStart(2, '0')}.png`
+      const written = await window.api.exportSave(exportDir, [{ fileName, dataUrl }], false)
+      if (written && written.length > 0) showToast(`✅ 저장 완료 → ${written[0].split('/').pop()}`)
+    } catch (err) {
+      showToast('저장 실패: ' + String(err))
+    } finally {
+      setExporting(false)
+    }
+  }, [project, selected, exportDir, showToast])
+
+  /** 전체 스텝 저장 (충돌 시 1번만 물어봄) */
+  const saveAll = useCallback(async () => {
+    setExporting(true)
+    try {
+      const images = await renderAllSteps(project)
+      const written = await window.api.exportSave(exportDir, images, true)
+      if (written && written.length > 0) showToast(`✅ ${written.length}장 저장 완료 → exports 폴더`)
+    } catch (err) {
+      showToast('저장 실패: ' + String(err))
+    } finally {
+      setExporting(false)
+    }
+  }, [project, exportDir, showToast])
 
   const selectStep = useCallback((id: string) => {
     setSelectedId(id)
@@ -525,25 +523,19 @@ export default function Editor({ initialProject, onGoHome }: Props): JSX.Element
         </button>
         <button
           className="btn"
-          onClick={() => void window.api.saveProject(project).then(() => showToast('💾 저장되었습니다'))}
+          disabled={exporting || !selected}
+          title="현재 스텝 한 장만 exports 폴더에 저장"
+          onClick={() => void saveOne()}
         >
-          저장
+          🖼 저장
         </button>
         <button
           className="btn btn-primary"
           disabled={exporting || project.steps.length === 0}
-          title="프로젝트 폴더의 exports 하위 폴더에 모든 스텝 저장"
-          onClick={() => void exportAll()}
+          title="모든 스텝을 exports 폴더에 저장"
+          onClick={() => void saveAll()}
         >
-          {exporting ? '내보내는 중…' : '⬇︎ 전체 저장'}
-        </button>
-        <button
-          className="btn"
-          disabled={exporting || project.steps.length === 0}
-          title="폴더를 선택해 다른 위치에 저장"
-          onClick={() => void exportSaveAs()}
-        >
-          다른 이름으로 저장
+          {exporting ? '저장 중…' : '⬇︎ 전체 저장'}
         </button>
       </div>
 
@@ -559,11 +551,23 @@ export default function Editor({ initialProject, onGoHome }: Props): JSX.Element
         <div className="editor-body">
           <aside className="step-list">
             {project.steps.map((step, i) => (
-              <button
+              <div
                 key={step.id}
                 className={'step-item' + (step.id === selectedId ? ' selected' : '')}
                 onClick={() => selectStep(step.id)}
               >
+                {step.id === selectedId && (
+                  <button
+                    className="step-delete"
+                    title="이 스텝 이미지 삭제 (실행취소로 복구 가능)"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      deleteStep(step.id)
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
                 <img src={frameUrl(project, step)} alt={`Step ${i + 1}`} />
                 <div className="step-item-meta">
                   <b>Step {i + 1}</b>
@@ -571,7 +575,7 @@ export default function Editor({ initialProject, onGoHome }: Props): JSX.Element
                     {step.videoTimeSec.toFixed(1)}s{stepLabel(step) && ` · ${stepLabel(step)}`}
                   </span>
                 </div>
-              </button>
+              </div>
             ))}
           </aside>
 

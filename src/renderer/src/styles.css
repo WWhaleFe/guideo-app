@@ -593,6 +593,7 @@ kbd {
 }
 
 .step-item {
+  position: relative;
   background: #232327;
   border: 2px solid transparent;
   border-radius: 10px;
@@ -600,6 +601,30 @@ kbd {
   cursor: pointer;
   color: inherit;
   text-align: left;
+}
+
+.step-delete {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: none;
+  background: rgba(179, 38, 30, 0.92);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.step-delete:hover {
+  background: #d33b32;
 }
 
 .step-item img {

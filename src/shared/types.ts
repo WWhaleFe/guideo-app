@@ -3,9 +3,9 @@ export type ClickButton = 'left' | 'right' | 'middle'
 export interface RawClickEvent {
   /** epoch ms, Date.now() 기준 (누른 시점) */
   time: number
-  /** 'click' = 제자리 클릭, 'drag' = 드래그 (x,y=시작 / x2,y2=끝) */
-  kind: 'click' | 'drag'
-  /** 전역 화면 좌표 (논리 포인트) — 클릭 지점 또는 드래그 시작점 */
+  /** 'click' = 제자리 클릭, 'drag' = 드래그, 'key' = 주요 키(Enter/Space/Esc) */
+  kind: 'click' | 'drag' | 'key'
+  /** 전역 화면 좌표 (논리 포인트) — 클릭 지점 또는 드래그 시작점 (key는 마지막 커서 위치) */
   x: number
   y: number
   /** 드래그 끝점 (kind='drag'일 때) */
@@ -14,6 +14,8 @@ export interface RawClickEvent {
   button: ClickButton
   /** 1 = 단일 클릭, 2 이상 = 더블클릭 */
   clicks: number
+  /** kind='key'일 때 표시 라벨 (Enter / Space / Esc) */
+  key?: string
 }
 
 /** 화면 영역 (포인트 단위, 전역 또는 로컬 좌표) */
@@ -111,6 +113,8 @@ export interface Step {
   marker: Marker
   /** 마커 숨김 (삭제해도 프레임 이미지는 유지) */
   markerHidden?: boolean
+  /** 키 입력 스텝일 때 라벨 (Enter / Space / Esc) */
+  keyLabel?: string
   /** 사용자가 추가한 도형들 */
   extras: ExtraShape[]
   captions: CaptionItem[]

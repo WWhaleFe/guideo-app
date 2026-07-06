@@ -102,9 +102,10 @@ export async function buildProject(input: BuildInput): Promise<Project> {
   const steps: Step[] = []
   for (const ev of input.events) {
     if (ev.time <= input.t0) continue
-    // 영역 밖 클릭은 스텝에서 제외
+    // 영역 밖 클릭/드래그는 스텝에서 제외 (키 입력은 예외)
     if (
       region &&
+      ev.kind !== 'key' &&
       (ev.x < region.x ||
         ev.x > region.x + region.width ||
         ev.y < region.y ||
@@ -192,6 +193,7 @@ export async function buildProject(input: BuildInput): Promise<Project> {
       clicks: ev.clicks,
       marker,
       markerHidden: false,
+      keyLabel: ev.kind === 'key' ? ev.key : undefined,
       extras,
       captions: [],
       captionMode,
@@ -229,12 +231,57 @@ export async function loadProject(jsonPath: string): Promise<Project> {
   return normalizeProject(project)
 }
 
-export async function writeExportImages(outDir: string, images: ExportImage[]): Promise<string[]> {
-  await fs.mkdir(outDir, { recursive: true })
+async function fileExists(p: string): Promise<boolean> {
+  try {
+    await fs.access(p)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** step-03.png + n → step-03_003.png */
+export function addNumberSuffix(fileName: string, n: number): string {
+  const dot = fileName.lastIndexOf('.')
+  const base = dot === -1 ? fileName : fileName.slice(0, dot)
+  const ext = dot === -1 ? '' : fileName.slice(dot)
+  return `${base}_${String(n).padStart(3, '0')}${ext}`
+}
+
+/** 주어진 파일명들 중 하나라도 이미 존재하는지 */
+export async function hasNameConflict(dir: string, fileNames: string[]): Promise<boolean> {
+  for (const name of fileNames) {
+    if (await fileExists(path.join(dir, name))) return true
+  }
+  return false
+}
+
+/** 모든 파일명에 대해 비어있는 공통 번호(_###)를 찾는다 */
+export async function nextBatchSuffix(dir: string, fileNames: string[]): Promise<number> {
+  for (let n = 1; n < 10000; n++) {
+    let free = true
+    for (const name of fileNames) {
+      if (await fileExists(path.join(dir, addNumberSuffix(name, n)))) {
+        free = false
+        break
+      }
+    }
+    if (free) return n
+  }
+  return 1
+}
+
+/** images를 지정한 파일명(names)으로 dir에 저장 */
+export async function writeNamedImages(
+  dir: string,
+  images: ExportImage[],
+  names: string[]
+): Promise<string[]> {
+  await fs.mkdir(dir, { recursive: true })
   const written: string[] = []
-  for (const img of images) {
-    const base64 = img.dataUrl.replace(/^data:image\/png;base64,/, '')
-    const filePath = path.join(outDir, img.fileName)
+  for (let i = 0; i < images.length; i++) {
+    const base64 = images[i].dataUrl.replace(/^data:image\/png;base64,/, '')
+    const filePath = path.join(dir, names[i])
     await fs.writeFile(filePath, Buffer.from(base64, 'base64'))
     written.push(filePath)
   }

@@ -16,11 +16,14 @@ import path from 'path'
 import { pathToFileURL } from 'url'
 import { startCapture, stopCapture } from './recorder'
 import {
+  addNumberSuffix,
   buildProject,
+  hasNameConflict,
   loadProject,
+  nextBatchSuffix,
   projectsRoot,
   saveProject,
-  writeExportImages
+  writeNamedImages
 } from './project'
 import { getDefaults, setDefaults } from './settings'
 import type {
@@ -209,6 +212,11 @@ app.on('will-quit', () => {
   globalShortcut.unregisterAll()
 })
 
+/** 폴더를 Finder/Explorer에서 연다. 이미 열려 있으면 해당 창을 앞으로 (shell.openPath가 재사용·활성화) */
+function revealFolder(dir: string): void {
+  void shell.openPath(dir)
+}
+
 function registerIpc(): void {
   ipcMain.handle('permissions:check', (): PermissionStatus => {
     const screenOk =
@@ -362,26 +370,34 @@ function registerIpc(): void {
     await shell.openPath(target)
   })
 
-  // 기본 내보내기 — 지정한 폴더(보통 프로젝트 하위 exports)에 모든 스텝 저장
+  // 저장(한 장/전체) — 이름 충돌 시 교체/추가저장(_###) 선택, 저장 후 폴더 열기
   ipcMain.handle(
-    'export:to-folder',
-    async (_e, dir: string, images: ExportImage[]): Promise<string[] | null> => {
-      const written = await writeExportImages(dir, images)
-      shell.openPath(dir)
+    'export:save',
+    async (_e, dir: string, images: ExportImage[], isAll: boolean): Promise<string[] | null> => {
+      if (!mainWindow) return null
+      const fileNames = images.map((img) => img.fileName)
+      let names = fileNames
+
+      if (await hasNameConflict(dir, fileNames)) {
+        const { response } = await dialog.showMessageBox(mainWindow, {
+          type: 'warning',
+          buttons: ['교체', '추가 저장', '취소'],
+          defaultId: 0,
+          cancelId: 2,
+          message: isAll ? '이미 저장된 파일이 있습니다.' : '이미 같은 이름의 파일이 있습니다.',
+          detail: '교체하거나, 파일명 뒤에 번호(_001)를 붙여 추가로 저장할 수 있습니다.'
+        })
+        if (response === 2) return null
+        if (response === 1) {
+          const n = await nextBatchSuffix(dir, fileNames)
+          names = fileNames.map((name) => addNumberSuffix(name, n))
+        }
+        // response 0 = 교체 → 원래 이름 유지(덮어쓰기)
+      }
+
+      const written = await writeNamedImages(dir, images, names)
+      revealFolder(dir)
       return written
     }
   )
-
-  // 다른 이름으로 저장 — 폴더 선택 대화상자
-  ipcMain.handle('export:save-as', async (_e, images: ExportImage[]): Promise<string[] | null> => {
-    if (!mainWindow) return null
-    const result = await dialog.showOpenDialog(mainWindow, {
-      title: '내보낼 폴더 선택',
-      properties: ['openDirectory', 'createDirectory']
-    })
-    if (result.canceled || result.filePaths.length === 0) return null
-    const written = await writeExportImages(result.filePaths[0], images)
-    shell.openPath(result.filePaths[0])
-    return written
-  })
 }

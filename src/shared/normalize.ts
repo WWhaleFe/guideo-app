@@ -122,6 +122,7 @@ function normalizeStep(step: Step, videoWidth: number): Step {
     button: step.button,
     clicks: step.clicks,
     markerHidden: step.markerHidden ?? false,
+    keyLabel: step.keyLabel,
     extras: Array.isArray(step.extras) ? step.extras.map(normalizeExtra) : [],
     captions,
     captionMode: step.captionMode ?? 'overlay',

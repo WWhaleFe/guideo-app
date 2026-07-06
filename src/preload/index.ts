@@ -51,10 +51,8 @@ const api = {
   setDefaults: (defaults: AppDefaults): Promise<void> =>
     ipcRenderer.invoke('defaults:set', defaults),
   revealPath: (target: string): Promise<void> => ipcRenderer.invoke('reveal:path', target),
-  exportToFolder: (dir: string, images: ExportImage[]): Promise<string[] | null> =>
-    ipcRenderer.invoke('export:to-folder', dir, images),
-  exportSaveAs: (images: ExportImage[]): Promise<string[] | null> =>
-    ipcRenderer.invoke('export:save-as', images)
+  exportSave: (dir: string, images: ExportImage[], isAll: boolean): Promise<string[] | null> =>
+    ipcRenderer.invoke('export:save', dir, images, isAll)
 }
 
 export type Api = typeof api
