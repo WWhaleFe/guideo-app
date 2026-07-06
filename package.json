@@ -1,6 +1,6 @@
 {
   "name": "guideo",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Guideo — 화면 녹화 한 번으로 클릭 경로를 따라 단계별 안내 이미지를 만드는 앱",
   "main": "./out/main/index.js",
   "author": "qorrud13@gmail.com",

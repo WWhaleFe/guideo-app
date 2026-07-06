@@ -362,7 +362,18 @@ function registerIpc(): void {
     await shell.openPath(target)
   })
 
-  ipcMain.handle('export:images', async (_e, images: ExportImage[]): Promise<string[] | null> => {
+  // 기본 내보내기 — 지정한 폴더(보통 프로젝트 하위 exports)에 모든 스텝 저장
+  ipcMain.handle(
+    'export:to-folder',
+    async (_e, dir: string, images: ExportImage[]): Promise<string[] | null> => {
+      const written = await writeExportImages(dir, images)
+      shell.openPath(dir)
+      return written
+    }
+  )
+
+  // 다른 이름으로 저장 — 폴더 선택 대화상자
+  ipcMain.handle('export:save-as', async (_e, images: ExportImage[]): Promise<string[] | null> => {
     if (!mainWindow) return null
     const result = await dialog.showOpenDialog(mainWindow, {
       title: '내보낼 폴더 선택',

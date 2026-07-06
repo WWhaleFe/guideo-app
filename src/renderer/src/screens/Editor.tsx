@@ -218,14 +218,32 @@ export default function Editor({ initialProject, onGoHome }: Props): JSX.Element
     [selectedId]
   )
 
+  /** 기본 내보내기 — 프로젝트 폴더 하위 exports 에 모든 스텝 저장 */
   const exportAll = useCallback(async () => {
     setExporting(true)
     try {
       const images = await renderAllSteps(project)
-      const written = await window.api.exportImages(images)
+      const dir = project.dir + '/exports'
+      const written = await window.api.exportToFolder(dir, images)
+      if (written && written.length > 0) {
+        showToast(`✅ ${written.length}장 저장 완료 → exports 폴더`)
+      }
+    } catch (err) {
+      showToast('내보내기 실패: ' + String(err))
+    } finally {
+      setExporting(false)
+    }
+  }, [project, showToast])
+
+  /** 다른 이름으로 저장 — 폴더 선택 */
+  const exportSaveAs = useCallback(async () => {
+    setExporting(true)
+    try {
+      const images = await renderAllSteps(project)
+      const written = await window.api.exportSaveAs(images)
       if (written && written.length > 0) {
         const folder = written[0].slice(0, written[0].lastIndexOf('/'))
-        showToast(`✅ ${written.length}장 내보내기 완료 → ${folder}`)
+        showToast(`✅ ${written.length}장 저장 완료 → ${folder}`)
       }
     } catch (err) {
       showToast('내보내기 실패: ' + String(err))
@@ -514,9 +532,18 @@ export default function Editor({ initialProject, onGoHome }: Props): JSX.Element
         <button
           className="btn btn-primary"
           disabled={exporting || project.steps.length === 0}
+          title="프로젝트 폴더의 exports 하위 폴더에 모든 스텝 저장"
           onClick={() => void exportAll()}
         >
-          {exporting ? '내보내는 중…' : 'PNG 내보내기'}
+          {exporting ? '내보내는 중…' : '⬇︎ 전체 저장'}
+        </button>
+        <button
+          className="btn"
+          disabled={exporting || project.steps.length === 0}
+          title="폴더를 선택해 다른 위치에 저장"
+          onClick={() => void exportSaveAs()}
+        >
+          다른 이름으로 저장
         </button>
       </div>
 

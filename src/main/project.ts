@@ -230,6 +230,7 @@ export async function loadProject(jsonPath: string): Promise<Project> {
 }
 
 export async function writeExportImages(outDir: string, images: ExportImage[]): Promise<string[]> {
+  await fs.mkdir(outDir, { recursive: true })
   const written: string[] = []
   for (const img of images) {
     const base64 = img.dataUrl.replace(/^data:image\/png;base64,/, '')
