@@ -1,0 +1,61 @@
+appId: com.guideo.app
+productName: Guideo
+copyright: Copyright © 2026 Guideo
+
+directories:
+  output: release
+  buildResources: build
+
+# uiohook-napi·ffmpeg-static는 prebuilt 바이너리를 사용하므로 소스 재빌드 비활성화
+npmRebuild: false
+
+# electron-vite 산출물 + 앱 메타데이터만 포함
+files:
+  - out/**
+  - package.json
+
+# 네이티브 모듈/바이너리는 asar 밖으로 풀어야 런타임에 로드됨
+asarUnpack:
+  - node_modules/uiohook-napi/**
+  - node_modules/ffmpeg-static/**
+
+# ---------- macOS ----------
+mac:
+  category: public.app-category.productivity
+  icon: build/icon.icns
+  target:
+    - target: dmg
+      arch:
+        - arm64
+  # 로컬 미서명 빌드 (배포 시 개발자 ID 서명 + 공증으로 교체)
+  identity: null
+  hardenedRuntime: false
+  extendInfo:
+    NSCameraUsageDescription: Guideo가 화면을 녹화하기 위해 필요합니다.
+    NSMicrophoneUsageDescription: Guideo가 화면을 녹화하기 위해 필요합니다.
+
+dmg:
+  title: Guideo ${version}
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
+
+# ---------- Windows ----------
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Guideo

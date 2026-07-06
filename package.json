@@ -1,0 +1,35 @@
+{
+  "name": "guideo",
+  "version": "0.1.0",
+  "description": "Guideo — 화면 녹화 한 번으로 클릭 경로를 따라 단계별 안내 이미지를 만드는 앱",
+  "main": "./out/main/index.js",
+  "author": "qorrud13@gmail.com",
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "electron-vite preview",
+    "package:mac": "npm run build && electron-builder --mac",
+    "package:win": "npm run build && electron-builder --win",
+    "package:dir": "npm run build && electron-builder --dir"
+  },
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0",
+    "uiohook-napi": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.3.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "png-to-ico": "^2.1.8",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11"
+  }
+}
